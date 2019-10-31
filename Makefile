@@ -1,5 +1,5 @@
 CC = i686-w64-mingw32-gcc
-CFLAGS = -I"$(STB_INCLUDE)"
+CFLAGS = -Istb
 
 %.o: %.gif
 	i686-w64-mingw32-objcopy -I binary -O pe-i386 -B i386 $^ $@
