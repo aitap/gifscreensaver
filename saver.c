@@ -39,19 +39,14 @@ void get_background(const unsigned char * image, int w, int h, unsigned char bac
 	//printf("bg = %g %g %g %g\n", bg[0], bg[1], bg[2], bg[3]);
 }
 
-void prepare(int width, int height) {
-	//printf("prepare w = %d, h = %d\n", width, height);
+void prepare() {
 	extern unsigned char binary_image_gif_start, binary_image_gif_end;
 	int comp = 4;
-	int x, y;
-	unsigned char *src = stbi_load_gif_from_memory(
+	image.pixels = stbi_load_gif_from_memory(
 		&binary_image_gif_start, &binary_image_gif_end - &binary_image_gif_start,
-		&image.delays, &x, &y, &image.z, &comp, comp
+		&image.delays, &image.x, &image.y, &image.z, &comp, comp
 	);
-	assert(src && comp == 4);
-	image.x = x;
-	image.y = y;
-	image.pixels = src;
+	assert(image.pixels && comp == 4);
 }
 
 void cleanup() {
@@ -71,7 +66,7 @@ LRESULT WINAPI ScreenSaverProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 		RECT rc;
 		BOOL ret = GetClientRect(hwnd, &rc);
 		assert(ret);
-		prepare(rc.right, rc.bottom);
+		prepare();
 		break;
 	}
 	case WM_ERASEBKGND: {
@@ -97,18 +92,13 @@ LRESULT WINAPI ScreenSaverProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 		// start the timer for the next frame
 		timer = SetTimer(hwnd, timer, image.delays[frame], NULL);
 
-		BYTE bitmapinfo[FIELD_OFFSET(BITMAPINFO,bmiColors) + (3 * sizeof(DWORD))] = {0};
-		BITMAPINFOHEADER *bih = (BITMAPINFOHEADER*) bitmapinfo;
+		BITMAPINFO bi = {0};
+		BITMAPINFOHEADER *bih = &bi.bmiHeader;
 		bih->biSize = sizeof(BITMAPINFOHEADER);
 		bih->biWidth = image.x, bih->biHeight = -image.y;
 		bih->biPlanes = 1, bih->biBitCount = 32;
-		bih->biCompression = BI_BITFIELDS, bih->biSizeImage = image.x * image.y * 4;
-		//bih->biCompression = BI_RGB, bih->biSizeImage = image.x * image.y * 4;
+		bih->biCompression = BI_RGB, bih->biSizeImage = image.x * image.y * 4;
 		bih->biClrUsed = bih->biClrImportant = 0;
-		DWORD *pMasks = (DWORD*)(&bitmapinfo[bih->biSize]);
-		pMasks[0] = 0x0000ff; // Red
-		pMasks[1] = 0x00ff00; // Green
-		pMasks[2] = 0xff0000; // Blue
 
 		RECT rc;
 		BOOL ret = GetClientRect(hwnd, &rc);
@@ -125,18 +115,20 @@ LRESULT WINAPI ScreenSaverProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 			x = (int)((long)image.x * rc.bottom / image.y);
 			y = rc.bottom;
 		}
+		ret = !!SetStretchBltMode(dc, COLORONCOLOR);
+		assert(ret);
 		ret = !!StretchDIBits(
 			dc,
 			rc.right / 2 - x / 2, rc.bottom / 2 - y / 2, x, y,
 			0, 0, image.x, image.y,
 			image.pixels + image.x * image.y * 4 * frame,
-			(BITMAPINFO*) bih, 0, SRCCOPY
+			&bi, DIB_RGB_COLORS, SRCCOPY
 		);
 		assert(ret);
 		ret = !!ReleaseDC(hwnd, dc);
 		assert(ret);
 
-		frame++;
+		++frame;
 		frame %= image.z;
 		break;
 	}
