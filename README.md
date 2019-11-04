@@ -18,6 +18,14 @@ Any other bits of information?
 Lucian Wischik's [Holistic Screensavers][holscr] web page proved very
 useful during the screensaver development.
 
+Bugs?
+-----
+
+Absolutely. GIF transparency is not supported (Instead, pixels are assumed
+to be 100% opaque). Scaling code tries to maximize the size of the picture
+without cropping it while preserving the aspect ratio but is not tested
+on anything besides the original gif (which happens to be square).
+
 [Half-Life]: https://en.wikipedia.org/wiki/Half-Life_(series)
 [MinGW]: https://sourceforge.net/projects/mingw-w64/
 [objcopy]: https://balau82.wordpress.com/2012/02/19/linking-a-binary-blob-with-gcc/
